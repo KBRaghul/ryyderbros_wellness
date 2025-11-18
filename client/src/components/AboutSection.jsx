@@ -7,7 +7,7 @@ export default function AboutSection() {
     >
       <div className="space-y-3">
         <h2 className="text-2xl font-semibold text-slate-900">
-          About ryyderbros_wellness
+          About RyyderBros Wellness
         </h2>
         <p className="text-slate-600 text-sm leading-relaxed">
           I&apos;m Raghul, a developer building tools that make mental health
@@ -22,7 +22,7 @@ export default function AboutSection() {
       </div>
 
       <div className="flex justify-center">
-        <div className="w-56 h-56 rounded-full bg-gradient-to-tr from-emerald-300 to-sky-300 flex items-center justify-center">
+        <div className="w-56 h-56 rounded-full bg-gradient-to-br from-rose-200 via-rose-300 to-rose-400 flex items-center justify-center">
           <span className="text-slate-900 font-medium text-sm text-center px-4">
             Helping you show up for yourself, one session at a time.
           </span>

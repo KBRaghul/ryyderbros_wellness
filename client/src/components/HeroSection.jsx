@@ -1,46 +1,112 @@
 // client/src/components/HeroSection.jsx
-export default function HeroSection() {
-  const handleLogin = () => {
-    window.location.href = "http://localhost:4000/auth/google";
+import { useNavigate } from "react-router-dom";
+
+const API_AUTH_URL = "http://localhost:4000/auth/google";
+
+export default function HeroSection({ user }) {
+  const navigate = useNavigate();
+
+  const firstName = user?.name?.split(" ")[0];
+
+  const handleSignIn = () => {
+    window.location.href = API_AUTH_URL;
   };
 
+  const handleGoToBookings = () => {
+    navigate("/bookings");
+  };
+
+  const handleGoToTherapistDashboard = () => {
+    navigate("/therapist");
+  };
+
+  const isTherapist = user?.role === "therapist";
+
   return (
-    <div
+    <section
       id="hero"
-      className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center gap-10"
+      className="max-w-6xl mx-auto px-4 py-10 md:py-16 grid md:grid-cols-2 gap-10 items-center"
     >
-      <div className="flex-1 space-y-5 text-center md:text-left">
-        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
-          Therapy that fits your life.
-        </h1>
-        <p className="text-slate-600">
-          ryyderbros_wellness helps you book sessions, stay consistent, and
-          build a healthier mind with the right therapist.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-          <button
-            onClick={handleLogin}
-            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition"
-          >
-            Sign in with Google
-          </button>
-          <button className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
-            Learn more
-          </button>
+      {/* Right: Simple visual / blob */}
+      <div className="relative">
+        <div className="w-full h-56 md:h-72 rounded-3xl bg-gradient-to-br from-lime-100 via-rose-200 to-rose-400 shadow-md flex items-center justify-center overflow-hidden">
+          <div className="text-center px-6">
+            <p className="text-xs uppercase tracking-[0.15em] text-slate-700 mb-2">
+              Gentle. Structured. Consistent.
+            </p>
+            <p className="text-lg md:text-xl font-semibold text-slate-900">
+              One small session can change
+              <span className="text-rose-600"> how your week feels.</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 flex justify-center">
-        <div className="w-64 h-64 rounded-3xl bg-white shadow-lg border border-slate-100 flex flex-col justify-center items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-2xl">
-            🧠
-          </div>
-          <p className="font-semibold text-slate-900">Your next session</p>
-          <p className="text-xs text-slate-500">
-            “You’re doing better than you think.”
-          </p>
+      {/* Left: Text */}
+      <div className="space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">
+          ryyderbros_wellness
+        </p>
+
+        <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 leading-tight">
+          {user ? (
+            <>
+              Welcome back, <span className="text-rose-500">{firstName}</span>.
+              Let&apos;s keep you consistent with therapy.
+            </>
+          ) : (
+            <>
+              Book therapy that actually{" "}
+              <span className="text-rose-500">fits your life</span>.
+            </>
+          )}
+        </h1>
+
+        <p className="text-sm md:text-base text-slate-700">
+          One place to discover therapists, manage your sessions, and track your
+          wellbeing. No drama, no fluff — just calm, structured support.
+        </p>
+
+        {/* CTA buttons change based on auth + role */}
+        <div className="flex flex-wrap items-center gap-3 mt-4">
+          {/* NOT logged in → Sign in with Google */}
+          {!user && (
+            <button
+              onClick={handleSignIn}
+              className="px-5 py-2.5 rounded-full bg-rose-400 text-white text-sm font-semibold shadow-sm hover:bg-rose-500"
+            >
+              Sign in to get started
+            </button>
+          )}
+
+          {/* Logged-in user (client or therapist) → Bookings button */}
+          {user && (
+            <button
+              onClick={handleGoToBookings}
+              className="px-5 py-2.5 rounded-full bg-rose-400 text-white text-sm font-semibold shadow-sm hover:bg-rose-500"
+            >
+              Go to my bookings
+            </button>
+          )}
+
+          {/* Extra button only for therapists */}
+          {isTherapist && (
+            <button
+              onClick={handleGoToTherapistDashboard}
+              className="px-4 py-2 rounded-full bg-white text-xs font-semibold text-rose-500 border border-rose-300 hover:bg-rose-50"
+            >
+              Therapist dashboard
+            </button>
+          )}
         </div>
+
+        {/* Tiny reassurance line */}
+        <p className="text-xs text-slate-500 mt-2">
+          {user
+            ? "You can manage your sessions anytime from your bookings page."
+            : "Sign in securely with Google — we never share your data with anyone."}
+        </p>
       </div>
-    </div>
+    </section>
   );
 }

@@ -29,7 +29,7 @@ export default function Slider() {
   const current = slides[index];
 
   return (
-    <div className="bg-gradient-to-r from-emerald-100 to-sky-100">
+    <div className="bg-gradient-to-r from-rose-200/60 to-rose-400/60 backdrop-blur-sm">
       <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col md:flex-row items-center gap-6">
         <div className="flex-1 space-y-2 text-center md:text-left">
           <p className="text-xs uppercase tracking-[0.25em] text-emerald-700">
@@ -55,7 +55,7 @@ export default function Slider() {
             key={i}
             onClick={() => setIndex(i)}
             className={`w-2.5 h-2.5 rounded-full ${
-              i === index ? "bg-emerald-600" : "bg-emerald-300"
+              i === index ? "bg-rose-600" : "bg-rose-300"
             }`}
           />
         ))}

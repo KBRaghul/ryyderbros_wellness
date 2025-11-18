@@ -39,7 +39,66 @@ async function findOrCreateGoogleUser(profile) {
   return user;
 }
 
+async function getAllTherapists() {
+  const result = await pool.query(
+    `
+    SELECT id, name, email, photo_url, headline, profile_bio
+    FROM users
+    WHERE role = 'therapist'
+    ORDER BY name ASC;
+    `
+  );
+  return result.rows;
+}
+
+async function getTherapistProfile(userId) {
+  const result = await pool.query(
+    `
+    SELECT id, name, email, photo_url, headline, profile_bio
+    FROM users
+    WHERE id = $1 AND role = 'therapist';
+    `,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
+async function updateTherapistProfile(
+  userId,
+  { photo_url, headline, profile_bio }
+) {
+  const result = await pool.query(
+    `
+    UPDATE users
+    SET photo_url = $1,
+        headline = $2,
+        profile_bio = $3
+    WHERE id = $4 AND role = 'therapist'
+    RETURNING id, name, email, photo_url, headline, profile_bio;
+    `,
+    [photo_url || null, headline || null, profile_bio || null, userId]
+  );
+  return result.rows[0] || null;
+}
+
+async function saveGoogleRefreshToken(userId, refreshToken) {
+  if (!refreshToken) return;
+
+  await pool.query(
+    `
+    UPDATE users
+    SET google_refresh_token = $2
+    WHERE id = $1
+    `,
+    [userId, refreshToken]
+  );
+}
+
 module.exports = {
-  findUserById,
   findOrCreateGoogleUser,
+  findUserById,
+  getAllTherapists,
+  getTherapistProfile,
+  updateTherapistProfile,
+  saveGoogleRefreshToken,
 };
