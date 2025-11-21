@@ -6,7 +6,8 @@ const { authRequired } = require("../middleware/auth.middleware"); // We'll crea
 
 const router = express.Router();
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
-const JWT_SECRET = process.env.JWT_SECRET || "dev_only_secret"; // Move to .env later
+const JWT_SECRET =
+  process.env.JWT_SECRET || "development_secret_change_before_prod";
 
 // Helper to create JWT
 function createJwtForUser(user) {

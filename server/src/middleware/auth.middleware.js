@@ -1,6 +1,7 @@
 // server/src/middleware/auth.middleware.js
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = "supersecret_jwt_key_change_me"; // Move to .env
+const JWT_SECRET =
+  process.env.JWT_SECRET || "development_secret_change_before_prod";
 
 function authRequired(req, res, next) {
   const authHeader = req.headers.authorization;
