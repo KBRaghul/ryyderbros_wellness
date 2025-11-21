@@ -81,6 +81,15 @@ app.use("/api/admin", adminRoutes);
 app.get("/", (req, res) => {
   res.send("ryyderbros_wellness API Running");
 });
+app.get("/debug-env", (req, res) => {
+  res.json({
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "undefined",
+    GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || "undefined",
+    CLIENT_URL: process.env.CLIENT_URL || "undefined",
+    NODE_ENV: process.env.NODE_ENV || "undefined",
+    PORT: process.env.PORT || "undefined",
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
