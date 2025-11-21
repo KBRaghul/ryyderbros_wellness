@@ -1,10 +1,12 @@
 // client/src/pages/TherapistDashboard.jsx
 import { useEffect, useState } from "react";
+
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE } from "../config";
 import Header from "../components/Header.jsx";
-
-const API_BASE = "http://localhost:4000";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import Footer from "../components/Footer.jsx";
 
 // Turn stored DB photo_url into a usable <img src="..."> URL
 const resolvePhotoUrl = (url) => {
@@ -42,6 +44,10 @@ export default function TherapistDashboard() {
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [slotDate, setSlotDate] = useState("");
   const [slotTime, setSlotTime] = useState("");
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    slotId: null,
+  });
 
   // Therapist profile
   const [profile, setProfile] = useState(null);
@@ -50,12 +56,12 @@ export default function TherapistDashboard() {
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
 
-  // Upcoming sessions (bookings where this therapist is the therapist)
+  // Upcoming sessions
   const [therapistBookings, setTherapistBookings] = useState([]);
   const [loadingTherapistBookings, setLoadingTherapistBookings] =
     useState(true);
 
-  // 1️⃣ Capture token from URL (after Google redirect)
+  // 1️⃣ Capture token from URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlToken = params.get("token");
@@ -66,7 +72,7 @@ export default function TherapistDashboard() {
     }
   }, [location.search, navigate]);
 
-  // 2️⃣ Fetch logged-in user (must be therapist)
+  // 2️⃣ Fetch logged-in user (Updated to allow Admins)
   useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("authToken");
@@ -80,7 +86,9 @@ export default function TherapistDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const u = res.data.user;
-        if (u.role !== "therapist") {
+
+        // --- CHECK UPDATED HERE: Allow therapist OR admin ---
+        if (u.role !== "therapist" && u.role !== "admin") {
           return navigate("/bookings", { replace: true });
         }
         setUser(u);
@@ -118,7 +126,7 @@ export default function TherapistDashboard() {
     fetchSlots();
   }, []);
 
-  // 4️⃣ Fetch therapist profile
+  // 4️⃣ Fetch therapist profile (Updated to allow Admins)
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("authToken");
@@ -143,45 +151,73 @@ export default function TherapistDashboard() {
       }
     };
 
-    if (user && user.role === "therapist") {
+    // --- CHECK UPDATED HERE ---
+    if (user && (user.role === "therapist" || user.role === "admin")) {
       fetchProfile();
     }
   }, [user]);
 
-  // 5️⃣ Fetch therapist’s upcoming bookings (sessions)
+  // 5️⃣ Fetch upcoming bookings (Updated to allow Admins)
   useEffect(() => {
-    const fetchTherapistBookings = async () => {
+    // --- CHECK UPDATED HERE ---
+    if (!user || (user.role !== "therapist" && user.role !== "admin")) return;
+
+    let cancelled = false;
+
+    const fetchTherapistBookings = async (showLoading = false) => {
       const token = localStorage.getItem("authToken");
       if (!token) {
-        setLoadingTherapistBookings(false);
+        if (showLoading) setLoadingTherapistBookings(false);
         return;
       }
+
+      if (showLoading) setLoadingTherapistBookings(true);
 
       try {
         const res = await axios.get(`${API_BASE}/api/therapist/bookings`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        if (cancelled) return;
+
         const all = res.data.bookings || [];
         all.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         setTherapistBookings(all);
       } catch (err) {
-        console.error("Failed to fetch therapist bookings", err);
+        if (!cancelled) {
+          console.error("Failed to fetch therapist bookings", err);
+        }
       } finally {
-        setLoadingTherapistBookings(false);
+        if (showLoading && !cancelled) {
+          setLoadingTherapistBookings(false);
+        }
       }
     };
 
-    if (user && user.role === "therapist") {
-      fetchTherapistBookings();
-    }
+    // initial load with spinner
+    fetchTherapistBookings(true);
+
+    // then refresh every 15 seconds
+    const intervalId = setInterval(() => {
+      fetchTherapistBookings(false);
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
   }, [user]);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await axios.post(`${API_BASE}/auth/logout`);
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
     localStorage.removeItem("authToken");
     navigate("/", { replace: true });
   };
 
-  // ➕ Add slot via form (backend enforces 1h15m duration)
   const handleAddSlot = async (e) => {
     e.preventDefault();
 
@@ -227,8 +263,6 @@ export default function TherapistDashboard() {
   };
 
   const handleDeleteSlot = async (slotId) => {
-    if (!window.confirm("Delete this slot?")) return;
-
     const token = localStorage.getItem("authToken");
     if (!token) {
       alert("Not authenticated");
@@ -241,6 +275,7 @@ export default function TherapistDashboard() {
       });
 
       setSlots((prev) => prev.filter((s) => s.id !== slotId));
+      setTherapistBookings((prev) => prev.filter((b) => b.slot_id !== slotId));
     } catch (err) {
       console.error("Failed to delete slot:", err);
       alert("Failed to delete slot");
@@ -282,10 +317,7 @@ export default function TherapistDashboard() {
     if (!file) return;
 
     const token = localStorage.getItem("authToken");
-    if (!token) {
-      alert("Not authenticated");
-      return;
-    }
+    if (!token) return;
 
     const formData = new FormData();
     formData.append("photo", file);
@@ -339,7 +371,8 @@ export default function TherapistDashboard() {
     );
   }
 
-  if (!user) {
+  // Final Render Check: Allow if therapist OR admin
+  if (!user || (user.role !== "therapist" && user.role !== "admin")) {
     return (
       <div className="min-h-screen bg-lime-100 flex flex-col items-center justify-center gap-4">
         <p className="text-slate-700">
@@ -362,14 +395,27 @@ export default function TherapistDashboard() {
       <Header user={user} onLogout={handleSignOut} />
 
       <main className="flex-1 max-w-6xl mx-auto px-4 py-8 space-y-8">
+        {/* Back Button for Admins */}
+        {user.role === "admin" && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => navigate("/admin")}
+              className="text-sm font-semibold text-rose-500 border border-rose-200 px-4 py-2 rounded-full hover:bg-rose-50 bg-white"
+            >
+              &larr; Back to Admin Portal
+            </button>
+          </div>
+        )}
+
         {/* Welcome */}
         <section>
           <h1 className="text-2xl font-semibold text-slate-900">
             Welcome, <span className="text-rose-500">{firstName}</span>
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Here you can manage your availability and see who&apos;s booked with
-            you.
+            {user.role === "admin"
+              ? "Admin Mode: You are viewing this dashboard as a therapist."
+              : "Here you can manage your availability and see who's booked with you."}
           </p>
         </section>
 
@@ -453,7 +499,9 @@ export default function TherapistDashboard() {
 
                   <div className="flex items-center gap-3 md:ml-4">
                     <button
-                      onClick={() => handleDeleteSlot(slot.id)}
+                      onClick={() =>
+                        setConfirmState({ open: true, slotId: slot.id })
+                      }
                       className="px-3 py-1.5 rounded-full border border-rose-300 text-xs text-rose-500 hover:bg-rose-50"
                     >
                       Delete slot
@@ -660,12 +708,22 @@ export default function TherapistDashboard() {
           </div>
         </section>
       </main>
+      <ConfirmDialog
+        open={confirmState.open}
+        title="Delete this slot?"
+        message="This will remove the slot and any associated upcoming session. This action cannot be undone."
+        confirmLabel="Delete slot"
+        cancelLabel="Cancel"
+        onCancel={() => setConfirmState({ open: false, slotId: null })}
+        onConfirm={() => {
+          if (confirmState.slotId) {
+            handleDeleteSlot(confirmState.slotId);
+          }
+          setConfirmState({ open: false, slotId: null });
+        }}
+      />
 
-      <footer className="w-full bg-lime-100 border-t border-rose-300 mt-8">
-        <div className="max-w-6xl mx-auto px-4 py-4 text-center text-xs text-slate-500">
-          © {new Date().getFullYear()} ryyderbros_wellness — Support with care.
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

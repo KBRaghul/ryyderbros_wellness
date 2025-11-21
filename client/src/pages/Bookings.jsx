@@ -1,12 +1,12 @@
 // client/src/pages/Bookings.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 import Header from "../components/Header.jsx";
 import Footer from "../components/Footer.jsx";
-
-const API_BASE = "http://localhost:4000";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import { API_BASE } from "../config";
 
 const resolvePhotoUrl = (url) => {
   if (!url) return "";
@@ -31,10 +31,22 @@ export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
 
+  // State for success/info messages
+  const [infoDialog, setInfoDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 0. Capture ?token=... from Google redirect and store in localStorage
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    slotId: null,
+  });
+
+  // 0. Capture ?token=... from Google redirect
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlToken = params.get("token");
@@ -44,6 +56,26 @@ export default function Bookings() {
       navigate("/bookings", { replace: true });
     }
   }, [location.search, navigate]);
+
+  // Shared function to load bookings
+  const fetchBookings = useCallback(async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setLoadingBookings(false);
+      return;
+    }
+
+    try {
+      const res = await axios.get(`${API_BASE}/api/my/bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookings(res.data.bookings || []);
+    } catch (err) {
+      console.error("Failed to fetch bookings:", err);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, []);
 
   // 1. Load user
   useEffect(() => {
@@ -70,7 +102,7 @@ export default function Bookings() {
     fetchUser();
   }, []);
 
-  // 2. After user loaded, fetch therapists + bookings (if logged in)
+  // 2. After user loaded, fetch therapists + bookings
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -92,41 +124,9 @@ export default function Bookings() {
       }
     };
 
-    const fetchBookings = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/my/bookings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setBookings(res.data.bookings || []);
-      } catch (err) {
-        console.error("Failed to fetch bookings:", err);
-      } finally {
-        setLoadingBookings(false);
-      }
-    };
-
     fetchTherapists();
     fetchBookings();
-  }, [loadingUser]);
-
-  const fetchBookings = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setLoadingBookings(false);
-      return;
-    }
-
-    try {
-      const res = await axios.get(`${API_BASE}/api/my/bookings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setBookings(res.data.bookings || []);
-    } catch (err) {
-      console.error("Failed to fetch bookings:", err);
-    } finally {
-      setLoadingBookings(false);
-    }
-  };
+  }, [loadingUser, fetchBookings]);
 
   const handleSignOut = async () => {
     try {
@@ -139,7 +139,6 @@ export default function Bookings() {
     navigate("/", { replace: true });
   };
 
-  // Toggle therapist selection + load slots
   const handleSelectTherapist = async (therapist) => {
     if (selectedTherapistId === therapist.id) {
       setSelectedTherapistId(null);
@@ -175,9 +174,6 @@ export default function Bookings() {
   };
 
   const handleBookSlot = async (slotId) => {
-    const confirmed = window.confirm("Book this session?");
-    if (!confirmed) return;
-
     const token = localStorage.getItem("authToken");
     if (!token) {
       alert("You need to be logged in to book.");
@@ -193,17 +189,24 @@ export default function Bookings() {
         }
       );
 
-      // 🔥 Instead of manually pushing into state, just refetch:
-      await fetchBookings(); // now "Your bookings" updates immediately
-
-      // Also remove the slot from list:
+      await fetchBookings();
       setSlots((prev) => prev.filter((s) => s.id !== slotId));
 
-      alert("Session booked successfully!");
+      setInfoDialog({
+        open: true,
+        title: "Booking Confirmed!",
+        message:
+          "You have successfully booked this session. You can find the details in 'Your bookings'.",
+      });
     } catch (err) {
       console.error("Failed to create booking:", err);
       if (err.response?.status === 409) {
-        alert("That slot is already booked. Please choose another.");
+        setInfoDialog({
+          open: true,
+          title: "Slot Unavailable",
+          message:
+            "That slot was just booked by someone else. Please choose another.",
+        });
       } else {
         alert("Failed to book. Please try again.");
       }
@@ -215,10 +218,7 @@ export default function Bookings() {
     const endDate = new Date(end);
     return `${startDate.toLocaleDateString()} • ${startDate.toLocaleTimeString(
       [],
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
+      { hour: "2-digit", minute: "2-digit" }
     )} – ${endDate.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -228,12 +228,11 @@ export default function Bookings() {
   if (loadingUser) {
     return (
       <div className="min-h-screen bg-lime-100 flex items-center justify-center">
-        <p className="text-slate-700 text-lg">Loading your bookings...</p>
+        <p className="text-slate-700 text-lg">Loading...</p>
       </div>
     );
   }
 
-  // If not logged in
   if (!user) {
     return (
       <div className="min-h-screen bg-lime-100 flex flex-col">
@@ -244,8 +243,8 @@ export default function Bookings() {
               Sign in to manage your sessions
             </h1>
             <p className="text-sm text-slate-600 mb-4">
-              You need to sign in with your Google account to view therapists,
-              see availability, and book sessions.
+              You need to sign in with your Google account to view therapists
+              and book sessions.
             </p>
             <a
               href="http://localhost:4000/auth/google"
@@ -267,6 +266,31 @@ export default function Bookings() {
       <Header user={user} onLogout={handleSignOut} />
 
       <main className="flex-1 max-w-6xl mx-auto px-4 py-8 md:py-10 space-y-8 md:space-y-10">
+        {/* 🔹 DASHBOARD BUTTONS (Only for Admin or Therapist) 🔹 */}
+        {user && (user.role === "admin" || user.role === "therapist") && (
+          <div className="flex justify-end gap-3">
+            {/* Button to Therapist Dashboard (For Therapists & Admins) */}
+            <button
+              onClick={() => navigate("/therapist")}
+              className="flex items-center gap-2 px-5 py-2.5 bg-rose-500 text-white rounded-full text-sm font-semibold shadow-sm hover:bg-rose-600 transition-all"
+            >
+              {user.role === "admin"
+                ? "👩‍⚕️ Manage as Therapist"
+                : "⚡ Go to Dashboard"}
+            </button>
+
+            {/* Button to Admin Portal (Only for Admins) */}
+            {user.role === "admin" && (
+              <button
+                onClick={() => navigate("/admin")}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-full text-sm font-semibold shadow-sm hover:bg-slate-700 transition-all"
+              >
+                🛡️ Admin Portal
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Page header */}
         <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -278,7 +302,7 @@ export default function Bookings() {
             </h1>
             <p className="text-sm md:text-base text-slate-700 mt-2 max-w-xl">
               Choose a therapist, view their available sessions, and manage your
-              upcoming bookings — all in one place.
+              upcoming bookings.
             </p>
           </div>
 
@@ -297,7 +321,7 @@ export default function Bookings() {
 
         {/* Main booking workspace */}
         <section className="grid gap-6 md:grid-cols-[2.1fr,2.4fr]">
-          {/* Left column: therapists list */}
+          {/* Therapists list */}
           <div className="bg-white rounded-3xl shadow-sm border border-rose-100 px-4 md:px-5 py-4 md:py-5 space-y-3">
             <div className="flex items-center justify-between mb-1">
               <div>
@@ -314,7 +338,7 @@ export default function Bookings() {
               <p className="text-sm text-slate-600">Loading therapists...</p>
             ) : therapists.length === 0 ? (
               <p className="text-sm text-slate-600">
-                No therapists are available yet. Please check back later.
+                No therapists are available yet.
               </p>
             ) : (
               <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
@@ -327,15 +351,14 @@ export default function Bookings() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSelectTherapist(t)}
-                      className={`text-left bg-white rounded-2xl shadow-sm border px-4 py-3 hover:border-rose-400 transition ${
+                      className={`w-full text-left bg-white rounded-2xl shadow-sm border px-4 py-3 hover:border-rose-400 transition ${
                         selectedTherapistId === t.id
                           ? "border-rose-400 ring-1 ring-rose-300"
                           : "border-rose-200"
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        {/* Avatar */}
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-300 via-rose-400 to-rose-500 overflow-hidden flex items-center justify-center text-white text-sm font-semibold">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-rose-300 via-rose-400 to-rose-500 overflow-hidden flex items-center justify-center text-white text-sm font-semibold">
                           {avatarUrl ? (
                             <img
                               src={avatarUrl}
@@ -347,26 +370,23 @@ export default function Bookings() {
                           )}
                         </div>
 
-                        {/* Text content */}
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-900">
                             {t.name}
                           </p>
                           {t.headline && (
-                            <p className="text-xs text-rose-500 mt-0.5">
+                            <p className="text-xs text-rose-500 mt-0.5 truncate">
                               {t.headline}
                             </p>
                           )}
-                          <p className="text-xs text-slate-600 mt-1">
+                          <p className="text-xs text-slate-600 mt-1 truncate">
                             {t.email}
                           </p>
-                          {t.profile_bio && (
-                            <p className="text-xs text-slate-600 mt-2 line-clamp-3">
-                              {t.profile_bio}
-                            </p>
-                          )}
-                          <p className="text-xs text-rose-500 mt-2 font-medium">
-                            View available slots →
+                        </div>
+
+                        <div className="shrink-0 pl-2 text-right">
+                          <p className="text-xs text-rose-500 font-medium whitespace-nowrap">
+                            View slots &rarr;
                           </p>
                         </div>
                       </div>
@@ -377,7 +397,7 @@ export default function Bookings() {
             )}
           </div>
 
-          {/* Right column: Available sessions */}
+          {/* Available sessions */}
           <div className="bg-white rounded-3xl shadow-sm border border-rose-100 px-4 md:px-5 py-4 md:py-5 flex flex-col">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
@@ -415,8 +435,7 @@ export default function Bookings() {
                     <span className="font-semibold">
                       {selectedTherapist.name}
                     </span>{" "}
-                    right now. Please choose another therapist or check back
-                    later.
+                    right now.
                   </p>
                 </div>
               )}
@@ -440,10 +459,12 @@ export default function Bookings() {
                         </p>
                       </div>
                       <button
-                        onClick={() => handleBookSlot(slot.id)}
-                        className="px-3.5 py-1.5 rounded-full bg-rose-400 text-white text-[11px] font-semibold hover:bg-rose-500"
+                        onClick={() =>
+                          setConfirmState({ open: true, slotId: slot.id })
+                        }
+                        className="px-4 py-1.5 rounded-full bg-rose-400 text-white text-xs font-semibold hover:bg-rose-500"
                       >
-                        Book session
+                        Book this slot
                       </button>
                     </div>
                   ))}
@@ -470,8 +491,7 @@ export default function Bookings() {
             <p className="text-sm text-slate-600">Loading your bookings...</p>
           ) : bookings.length === 0 ? (
             <p className="text-sm text-slate-600">
-              You don&apos;t have any bookings yet. Choose a therapist and book
-              a session above.
+              You don&apos;t have any bookings yet.
             </p>
           ) : (
             <div className="space-y-2.5">
@@ -518,6 +538,32 @@ export default function Bookings() {
           )}
         </section>
       </main>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmState.open}
+        title="Book this session?"
+        message="Once booked, you’ll receive a Meet link and this session will appear in your upcoming bookings."
+        confirmLabel="Confirm booking"
+        cancelLabel="Back"
+        onCancel={() => setConfirmState({ open: false, slotId: null })}
+        onConfirm={() => {
+          if (confirmState.slotId) {
+            handleBookSlot(confirmState.slotId);
+          }
+          setConfirmState({ open: false, slotId: null });
+        }}
+      />
+
+      {/* Success / Info Dialog */}
+      <ConfirmDialog
+        open={infoDialog.open}
+        title={infoDialog.title}
+        message={infoDialog.message}
+        confirmLabel="OK"
+        cancelLabel={null}
+        onConfirm={() => setInfoDialog({ ...infoDialog, open: false })}
+      />
 
       <Footer />
     </div>

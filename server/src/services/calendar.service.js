@@ -109,6 +109,36 @@ async function createTherapyEventWithMeet({
   };
 }
 
+/**
+ * Cancels a Google Calendar event using the therapist's credentials.
+ */
+async function deleteTherapyEvent({ therapistId, googleEventId }) {
+  if (!googleEventId) {
+    console.log("No Google Event ID provided, skipping calendar deletion.");
+    return;
+  }
+
+  try {
+    const { oAuth2Client } = await getOAuthClientForUser(therapistId);
+    const calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId: googleEventId,
+      sendNotifications: true, // Notifies attendees (client) of cancellation
+    });
+
+    console.log(`Google event ${googleEventId} deleted successfully.`);
+  } catch (err) {
+    // If the event doesn't exist (e.g., already deleted), we still proceed.
+    console.error(
+      `Failed to delete Google Calendar event ${googleEventId}:`,
+      err.message
+    );
+  }
+}
+
 module.exports = {
   createTherapyEventWithMeet,
+  deleteTherapyEvent, // 👈 Export the new function
 };

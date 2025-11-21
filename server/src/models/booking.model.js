@@ -140,6 +140,7 @@ async function getBookingsForTherapist(therapistId) {
     `
       SELECT
         b.id,
+        b.slot_id,  
         b.status,
         b.created_at,
         s.start_time,

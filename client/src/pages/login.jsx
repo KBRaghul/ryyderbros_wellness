@@ -1,10 +1,8 @@
 // client/src/pages/Login.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+import { API_BASE } from "../config";
 axios.defaults.withCredentials = true;
-
-const API_BASE = "http://localhost:4000";
 
 function Login() {
   const [user, setUser] = useState(null);

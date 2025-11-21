@@ -1,5 +1,6 @@
 // server/src/models/slot.model.js
 const pool = require("../config/db"); // same as in user.model.js
+const { deleteTherapyEvent } = require("../services/calendar.service");
 
 async function getSlotsForTherapist(therapistId) {
   const query = `
@@ -23,13 +24,69 @@ async function createSlotForTherapist(therapistId, startTime, endTime) {
 }
 
 async function deleteSlotForTherapist(therapistId, slotId) {
-  const query = `
-    DELETE FROM slots
-    WHERE id = $1 AND therapist_id = $2
-    RETURNING id;
-  `;
-  const result = await pool.query(query, [slotId, therapistId]);
-  return result.rowCount > 0;
+  const client = await pool.connect();
+  let googleEventIds = [];
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Fetch any bookings for this slot and remember their Google event IDs
+    const bookingsRes = await client.query(
+      `
+      SELECT google_event_id
+      FROM bookings
+      WHERE slot_id = $1
+      `,
+      [slotId]
+    );
+
+    googleEventIds = bookingsRes.rows
+      .map((row) => row.google_event_id)
+      .filter((id) => !!id); // keep only non-null IDs
+
+    // 2. Delete associated bookings
+    await client.query(
+      `
+      DELETE FROM bookings
+      WHERE slot_id = $1
+      `,
+      [slotId]
+    );
+
+    // 3. Delete the slot itself
+    const slotDeleteRes = await client.query(
+      `
+      DELETE FROM slots
+      WHERE id = $1 AND therapist_id = $2
+      RETURNING id;
+      `,
+      [slotId, therapistId]
+    );
+
+    await client.query("COMMIT");
+
+    // 4. After DB commit, cancel Google Calendar events (if any)
+    for (const googleEventId of googleEventIds) {
+      try {
+        await deleteTherapyEvent({ therapistId, googleEventId });
+      } catch (err) {
+        // This should rarely throw, but don't break deletion if it does
+        console.error(
+          "Error cancelling Google event for deleted slot:",
+          err.message
+        );
+      }
+    }
+
+    // Return true if the slot itself was deleted
+    return slotDeleteRes.rowCount > 0;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Error deleting slot and booking:", err);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 module.exports = {

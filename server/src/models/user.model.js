@@ -42,9 +42,10 @@ async function findOrCreateGoogleUser(profile) {
 async function getAllTherapists() {
   const result = await pool.query(
     `
+
     SELECT id, name, email, photo_url, headline, profile_bio
     FROM users
-    WHERE role = 'therapist'
+    WHERE role = 'therapist' OR role = 'admin'
     ORDER BY name ASC;
     `
   );

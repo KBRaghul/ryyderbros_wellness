@@ -1,5 +1,6 @@
 // client/src/components/Header.jsx
 import { Link } from "react-router-dom";
+import { API_AUTH_URL } from "../config";
 
 export default function Header({ user, onLogout }) {
   const firstName = user?.name?.split(" ")[0];
@@ -33,7 +34,7 @@ export default function Header({ user, onLogout }) {
           {/* If NOT logged in */}
           {!user && (
             <a
-              href="http://localhost:4000/auth/google"
+              href={API_AUTH_URL}
               className="px-4 py-1.5 rounded-full bg-rose-400 text-white text-sm font-medium hover:bg-rose-500"
             >
               Sign In
