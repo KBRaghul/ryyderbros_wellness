@@ -1,14 +1,14 @@
-RyyderBros Wellness — Online Therapy Booking Platform
+**RyyderBros Wellness — Online Therapy Booking Platform**
 
 A full-stack wellness booking system that enables clients to book therapy sessions, therapists to manage availability, and admins to oversee the platform — with Google OAuth Login, Google Calendar integration, and a complete backend architecture.
 
-🚀 Live Demo
+**🚀 Live Demo**
 
 Client (Vercel): https://ryyderbros-wellness.vercel.app
 
 Backend API (Render): https://ryyderbros-wellness-backend.onrender.com
 
-📌 Project Overview
+**📌 Project Overview**
 
 RyyderBros Wellness is a production-ready, full-stack web application built for therapy session scheduling. It includes:
 
@@ -24,17 +24,18 @@ Role-based access (Client, Therapist, Admin)
 
 Fully deployed using Render (Backend) and Vercel (Frontend)
 
-🧱 System Architecture
+**🧱 System Architecture**
 Tech Stack
-Layer	Technology	Purpose
-Frontend	React + Vite + Tailwind	UI, routing, token storage
-Backend	Node.js + Express	APIs, authentication, Google OAuth
-Database	PostgreSQL (Render)	Users, therapists, slots, bookings
-Auth Provider	Google OAuth 2.0	Login & identity validation
-External API	Google Calendar API	Creating Google Meet booking events
-Deployment	Vercel (client), Render (server)	Production hosting
-🔐 Core Features
-✅ Google OAuth Login
+    Layer	          Technology	                      Purpose
+Frontend	    React + Vite + Tailwind	UI,         routing, token storage
+Backend	        Node.js + Express	                APIs, authentication, Google OAuth
+Database	    PostgreSQL (Render)	                Users, therapists, slots, bookings
+Auth Provider	Google OAuth 2.0	                Login & identity validation
+External API	Google Calendar API	                Creating Google Meet booking events
+Deployment	    Vercel (client), Render (server)	Production hosting
+
+**🔐 Core Features**
+**✅ Google OAuth Login**
 
 Users authenticate via Google
 
@@ -44,7 +45,7 @@ JWT token is issued and returned to the frontend
 
 Roles are automatically assigned (client/therapist/admin)
 
-🎯 Client Features
+**🎯 Client Features**
 
 View therapists
 
@@ -56,7 +57,7 @@ Receive Google Meet link automatically
 
 View upcoming bookings
 
-🧑‍⚕️ Therapist Dashboard
+**🧑‍⚕️ Therapist Dashboard**
 
 Manage available session slots
 
@@ -66,15 +67,15 @@ View client bookings
 
 Delete/cancel sessions
 
-🛠️ Admin Portal
-
+**🛠️ Admin Portal
+**
 Access to master dashboard
 
 View all bookings across the system
 
 Manage therapists and roles
 
-📅 Google Calendar Integration
+**📅 Google Calendar Integration**
 
 When a client books a slot:
 
@@ -86,25 +87,8 @@ Calendar invites are sent to both therapist + client
 
 Link stored in DB and shown on the client app
 
-📂 Repository Structure
-.
-├── client/
-│   ├── src/
-│   ├── pages/
-│   ├── components/
-│   └── ...
-│
-└── server/
-    ├── src/
-    │   ├── routes/
-    │   ├── controllers/
-    │   ├── models/
-    │   ├── middleware/
-    │   └── utils/
-    └── server.js
 
-
-🔄 Authentication Flow
+**🔄 Authentication Flow**
 
 Client clicks Sign In with Google
 
@@ -120,7 +104,7 @@ All future API calls use:
 
 Authorization: Bearer <token>
 
-🏗️ Booking Flow
+**🏗️ Booking Flow**
 
 Client selects a therapist
 
@@ -134,25 +118,26 @@ Database updated: is_booked = true
 
 Client sees confirmation + meeting link
 
-🗄️ Database Schema (Simplified)
-users
+**🗄️ Database Schema (Simplified)**
+**users**
 id	name	email	role
-slots
+
+**slots**
 
 | id | therapist_id | start_time | end_time | is_booked |
 
-bookings
+**bookings**
 
 | id | client_id | therapist_id | slot_id | meet_link |
 
-🛠️ Environment Variables
+**🛠️ Environment Variables**
 
-Frontend (.env)
+**Frontend (.env)**
 
 VITE_API_URL=<backend-api-url>
 
 
-Backend (.env)
+**Backend (.env)**
 
 PORT=4000
 CLIENT_URL=<frontend-url>
@@ -163,7 +148,8 @@ DATABASE_URL=<postgres-connection>
 JWT_SECRET=<your-secret>
 NODE_ENV=production
 
-▶️ Local Development Setup
+**▶️ Local Development Setup**
+
 1️⃣ Clone the repository
 git clone https://github.com/<your-username>/ryyderbros_wellness.git
 cd ryyderbros_wellness
@@ -183,14 +169,15 @@ cd server
 npm install
 npm run dev
 
-🌍 Deployment
-Frontend
+**🌍 Deployment**
+
+**Frontend**
 
 Deployed on Vercel
 
 Automatically builds on push to main / master
 
-Backend
+**Backend**
 
 Deployed on Render Web Service
 
@@ -198,23 +185,19 @@ Uses environment variables
 
 Auto-deploys on push
 
-📌 Future Enhancements
+**📌 Future Enhancements**
 
-Therapist earnings dashboard
+1. Therapist earnings dashboard
+2. SMS reminders (Twilio)
+3. AI-based session matching
+4. Admin reports for analytics
+5. Automatic rescheduling workflow
 
-SMS reminders (Twilio)
-
-AI-based session matching
-
-Admin reports for analytics
-
-Automatic rescheduling workflow
-
-🤝 Contributing
+**🤝 Contributing**
 
 Pull requests are welcome.
 For major changes, open an issue first to discuss what you would like to improve.
 
-📜 License
+**📜 License**
 
 MIT License – free for personal and commercial use.
